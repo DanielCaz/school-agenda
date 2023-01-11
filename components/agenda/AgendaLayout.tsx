@@ -8,7 +8,9 @@ const AgendaLayout = ({ children }: Props) => {
   return (
     <>
       <Meta title="Horarios ISC" />
-      <h1>Agenda</h1>
+      <header className="bg-gray-700 text-white p-4">
+        <h1 className="text-2xl font-medium">Horario ISC</h1>
+      </header>
       {children}
     </>
   );
