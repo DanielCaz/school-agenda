@@ -22,7 +22,7 @@ export default function Document() {
           href="/favicon-16x16.png"
         />
         <link rel="manifest" href="/site.webmanifest" />
-        <meta property="og:title" content="Daniel Cazarez" />
+        <meta property="og:title" content="Horarios ISC" />
         <meta
           property="og:image"
           content="https://horarios-isc.vercel.app/logo-og.png"
