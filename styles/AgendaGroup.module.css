@@ -1,0 +1,14 @@
+.tableCell {
+  height: 10vh;
+  overflow: scroll;
+}
+
+.tableCell::-webkit-scrollbar {
+  display: none;
+}
+
+@media only screen and (max-width: 800px) {
+  .tableCell {
+    height: 20vh;
+  }
+}

@@ -7,67 +7,24 @@ import {
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
 import { useState, useEffect } from "react";
 import { db } from "../../../../utils/firebase";
-import { useRouter } from "next/router";
+import { GetStaticPropsContext } from "next";
 
-const AdminSchedule = () => {
-  const router = useRouter();
+interface Props {
+  scheduleId: string;
+  schedule: Schedule;
+  subjects: Subject[];
+  locations: Location[];
+}
 
-  const { scheduleId } = router.query as { scheduleId: string };
-
-  const [schedule, setSchedule] = useState<Schedule>({
-    days: [],
-  });
-  const [selectedDay, setSelectedDay] = useState<ScheduleDay>({
-    items: [],
-    name: "",
-  });
-  const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
+const AdminSchedule = ({
+  scheduleId,
+  schedule: initialSchedule,
+  subjects,
+  locations,
+}: Props) => {
+  const [schedule, setSchedule] = useState<Schedule>(initialSchedule);
+  const [selectedDay, setSelectedDay] = useState<ScheduleDay>();
   const [editIndex, setEditIndex] = useState(-1);
-
-  // GET
-  const getSchedule = async () => {
-    if (scheduleId !== "a" && scheduleId !== "b") return;
-
-    const docRef = await getDoc(doc(db, "schedules", scheduleId));
-    if (!docRef.exists()) {
-      const newSchedule: Schedule = {
-        days: [
-          { name: "Lunes", items: [] },
-          { name: "Martes", items: [] },
-          { name: "Miércoles", items: [] },
-          { name: "Jueves", items: [] },
-          { name: "Viernes", items: [] },
-        ],
-      };
-      await setDoc(doc(db, "schedules", scheduleId), newSchedule);
-      setSchedule({ ...newSchedule, id: scheduleId });
-      setSelectedDay(newSchedule.days[0]);
-    } else {
-      const fetchedSchedule = {
-        ...(docRef.data() as Schedule),
-        id: scheduleId,
-      };
-      setSchedule(fetchedSchedule);
-      setSelectedDay(fetchedSchedule.days[0]);
-    }
-  };
-
-  const getSubjects = async () => {
-    const subjectsSnapshot = await getDocs(collection(db, "subjects"));
-    const subjects = subjectsSnapshot.docs.map(
-      (doc) => ({ ...doc.data(), id: doc.id } as Subject)
-    );
-    setSubjects(subjects);
-  };
-
-  const getLocations = async () => {
-    const locationsSnapshot = await getDocs(collection(db, "locations"));
-    const locations = locationsSnapshot.docs.map(
-      (doc) => ({ ...doc.data(), id: doc.id } as Location)
-    );
-    setLocations(locations);
-  };
 
   // ADD
   const addEmptyItem = async () => {
@@ -238,9 +195,7 @@ const AdminSchedule = () => {
   const durations = [1, 2, 3];
 
   useEffect(() => {
-    getSchedule();
-    getSubjects();
-    getLocations();
+    setSelectedDay(schedule.days[0]);
   }, []);
 
   return (
@@ -438,6 +393,62 @@ const AdminSchedule = () => {
       </div>
     </>
   );
+};
+
+export const getStaticPaths = async () => {
+  const colRef = await getDocs(collection(db, "schedules"));
+  const paths = colRef.docs.map((doc) => ({
+    params: { scheduleId: doc.id },
+  }));
+
+  return {
+    paths,
+    fallback: false,
+  };
+};
+
+export const getStaticProps = async (context: GetStaticPropsContext) => {
+  const scheduleId = context.params?.scheduleId as string;
+
+  const docRef = await getDoc(doc(db, "schedules", scheduleId));
+
+  let schedule: Schedule;
+  if (!docRef.exists()) {
+    schedule = {
+      days: [
+        { name: "Lunes", items: [] },
+        { name: "Martes", items: [] },
+        { name: "Miércoles", items: [] },
+        { name: "Jueves", items: [] },
+        { name: "Viernes", items: [] },
+      ],
+    };
+    await setDoc(doc(db, "schedules", scheduleId), schedule);
+  } else {
+    schedule = {
+      ...(docRef.data() as Schedule),
+      id: scheduleId,
+    };
+  }
+
+  const subjectsSnapshot = await getDocs(collection(db, "subjects"));
+  const subjects = subjectsSnapshot.docs.map(
+    (doc) => ({ ...doc.data(), id: doc.id } as Subject)
+  );
+
+  const locationsSnapshot = await getDocs(collection(db, "locations"));
+  const locations = locationsSnapshot.docs.map(
+    (doc) => ({ ...doc.data(), id: doc.id } as Location)
+  );
+
+  return {
+    props: {
+      scheduleId,
+      schedule,
+      subjects,
+      locations,
+    },
+  };
 };
 
 export default AdminSchedule;

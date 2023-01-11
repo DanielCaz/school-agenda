@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 const Admin = () => {
-  const [user, loading, error] = useAuthState(auth);
+  const [user, loading] = useAuthState(auth);
 
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
