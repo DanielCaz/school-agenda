@@ -40,7 +40,16 @@ const LocationForm = ({ location, onSubmit }: Props) => {
           defaultValue={location?.name}
         />
       </div>
-      <div className="flex justify-end mt-4">
+      <div className="flex justify-end mt-4 space-x-3">
+        <button
+          className="px-4 py-1 text-white font-light tracking-wider bg-cyan-900 rounded"
+          type="button"
+          onClick={() => {
+            nameRef.current!.value = "";
+          }}
+        >
+          Clear
+        </button>
         <button
           className="px-4 py-1 text-white font-light tracking-wider bg-gray-900 rounded"
           type="submit"

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { AiOutlineArrowLeft } from "react-icons/ai";
 import { auth } from "../../utils/firebase";
+import Meta from "../General/Meta";
 
 interface Props {
   children: React.ReactNode;
@@ -25,6 +26,7 @@ const AdminLayout = ({ children }: Props) => {
 
   return (
     <>
+      <Meta title="Admin Panel" />
       <header className="flex justify-between items-center bg-gray-700 text-white p-4">
         <h1 className="text-2xl font-medium">Admin Panel</h1>
         {!loading && user && (

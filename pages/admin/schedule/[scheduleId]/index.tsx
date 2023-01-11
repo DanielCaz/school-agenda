@@ -2,11 +2,10 @@ import {
   Location,
   Schedule,
   ScheduleDay,
-  ScheduleItem,
   Subject,
 } from "../../../../interfaces/Schedule";
 import { collection, doc, getDoc, getDocs, setDoc } from "firebase/firestore";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../../../../utils/firebase";
 import { useRouter } from "next/router";
 
@@ -15,10 +14,16 @@ const AdminSchedule = () => {
 
   const { scheduleId } = router.query as { scheduleId: string };
 
-  const [schedule, setSchedule] = useState<Schedule>();
-  const [selectedDay, setSelectedDay] = useState<ScheduleDay>();
+  const [schedule, setSchedule] = useState<Schedule>({
+    days: [],
+  });
+  const [selectedDay, setSelectedDay] = useState<ScheduleDay>({
+    items: [],
+    name: "",
+  });
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [editIndex, setEditIndex] = useState(-1);
 
   // GET
   const getSchedule = async () => {
@@ -88,6 +93,7 @@ const AdminSchedule = () => {
 
     setSchedule(newSchedule);
     setSelectedDay(newDay);
+    setEditIndex(newDay.items.length - 1);
     await setDoc(doc(db, "schedules", scheduleId), newSchedule);
   };
 
@@ -202,14 +208,31 @@ const AdminSchedule = () => {
 
       setSchedule(newSchedule);
       setSelectedDay(newDay);
+      setEditIndex(-1);
       setDoc(doc(db, "schedules", scheduleId), { days: newSchedule.days });
     }
   };
 
-  const sortedDayItems = useMemo(
-    () => selectedDay?.items.sort((a, b) => a.start - b.start),
-    [selectedDay?.items]
-  );
+  // MISC
+  const sortItems = () => {
+    const sortedItems = selectedDay!.items.sort((a, b) => a.start - b.start);
+
+    const newDay: ScheduleDay = {
+      ...selectedDay!,
+      items: sortedItems,
+    };
+
+    const newSchedule: Schedule = {
+      ...schedule!,
+      days: schedule!.days.map((day) =>
+        day.name === newDay.name ? newDay : day
+      ),
+    };
+
+    setSchedule(newSchedule);
+    setSelectedDay(newDay);
+    setDoc(doc(db, "schedules", scheduleId), { days: newSchedule.days });
+  };
 
   const startHours = [7, 8, 9, 10, 11, 12, 13];
   const durations = [1, 2, 3];
@@ -222,7 +245,7 @@ const AdminSchedule = () => {
 
   return (
     <>
-      <div className="flex justify-center space-x-5 mt-3">
+      <div className="flex justify-center space-x-3 mt-3">
         <label htmlFor="selectedDay" className="text-lg">
           Day:
         </label>
@@ -232,15 +255,15 @@ const AdminSchedule = () => {
           onChange={(e) => {
             const dayName = e.target.value;
             const day = schedule!.days.find((day) => day.name === dayName);
-            setSelectedDay(day);
+            setSelectedDay(day!);
+            setEditIndex(-1);
           }}
         >
-          {schedule &&
-            schedule.days.map((day) => (
-              <option key={day.name} value={day.name}>
-                {day.name}
-              </option>
-            ))}
+          {schedule?.days.map((day) => (
+            <option key={day.name} value={day.name}>
+              {day.name}
+            </option>
+          ))}
         </select>
         <button
           className="bg-blue-500 hover:bg-blue-700 text-white rounded px-2"
@@ -248,108 +271,168 @@ const AdminSchedule = () => {
         >
           Add
         </button>
+        <button
+          className="bg-sky-500 hover:bg-sky-700 text-white rounded px-2"
+          onClick={sortItems}
+        >
+          Sort
+        </button>
       </div>
-      <div
-        className="mx-auto flex flex-col space-y-5 mt-5"
-        style={{ maxWidth: "600px" }}
-      >
+      <div className="mx-auto grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 space-y-5 my-5 px-5">
         {selectedDay &&
-          sortedDayItems?.map((item, index) => (
-            <div key={index} className="shadow-md p-3 space-y-3">
+          selectedDay.items?.map((item, index) => (
+            <div key={index} className="shadow-md p-3 space-y-1 border rounded">
               <div className="flex justify-between">
-                <label htmlFor="subject" className="text-lg">
-                  Subject:
-                </label>
-                <select
-                  id="subject"
-                  className="border p-1 rounded"
-                  onChange={(e) => {
-                    updateSelectedDaySubject(index, e.target.value!);
-                  }}
-                >
-                  {subjects.map((subject) => (
-                    <option
-                      key={subject.id}
-                      value={subject.id}
-                      selected={item.subject.id === subject.id}
+                {editIndex === index ? (
+                  <>
+                    <label htmlFor="subject" className="text-lg">
+                      Subject:
+                    </label>
+                    <select
+                      id="subject"
+                      className="border p-1 rounded"
+                      onChange={(e) => {
+                        updateSelectedDaySubject(index, e.target.value!);
+                      }}
                     >
-                      {subject.name}
-                    </option>
-                  ))}
-                </select>
+                      {subjects.map((subject) => (
+                        <option
+                          key={subject.id}
+                          value={subject.id}
+                          selected={item.subject.id === subject.id}
+                        >
+                          {subject.name}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <strong>Subject: </strong>
+                    {item.subject.name}
+                  </>
+                )}
               </div>
               <div className="flex justify-between">
-                <label htmlFor="location" className="text-lg">
-                  Location:
-                </label>
-                <select
-                  id="location"
-                  className="border p-1 rounded"
-                  onChange={(e) => {
-                    updateSelectedDayLocation(index, e.target.value!);
-                  }}
-                >
-                  {locations.map((location) => (
-                    <option
-                      key={location.id}
-                      value={location.id}
-                      selected={item.location.id === location.id}
+                {editIndex === index ? (
+                  <>
+                    <label htmlFor="location" className="text-lg">
+                      Location:
+                    </label>
+                    <select
+                      id="location"
+                      className="border p-1 rounded"
+                      onChange={(e) => {
+                        updateSelectedDayLocation(index, e.target.value!);
+                      }}
                     >
-                      {location.name}
-                    </option>
-                  ))}
-                </select>
+                      {locations.map((location) => (
+                        <option
+                          key={location.id}
+                          value={location.id}
+                          selected={item.location.id === location.id}
+                        >
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <strong>Location: </strong>
+                    {item.location.name}
+                  </>
+                )}
               </div>
               <div className="flex justify-between">
-                <label htmlFor="start" className="text-lg">
-                  Start:
-                </label>
-                <select
-                  id="start"
-                  className="border p-1 rounded"
-                  onChange={(e) => {
-                    updateSelectedDayStart(index, parseInt(e.target.value));
-                  }}
-                >
-                  {startHours.map((hour) => (
-                    <option
-                      key={hour}
-                      value={hour}
-                      selected={item.start === hour}
+                {editIndex === index ? (
+                  <>
+                    <label htmlFor="start" className="text-lg">
+                      Start:
+                    </label>
+                    <select
+                      id="start"
+                      className="border p-1 rounded"
+                      onChange={(e) => {
+                        updateSelectedDayStart(index, parseInt(e.target.value));
+                      }}
                     >
-                      {hour}:00
-                    </option>
-                  ))}
-                </select>
+                      {startHours.map((hour) => (
+                        <option
+                          key={hour}
+                          value={hour}
+                          selected={item.start === hour}
+                        >
+                          {hour}:00
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                ) : (
+                  <>
+                    <strong>Time: </strong>
+                    {item.start}:00 - {item.start + item.duration}:00
+                  </>
+                )}
               </div>
               <div className="flex justify-between">
-                <label htmlFor="duration" className="text-lg">
-                  Duration:
-                </label>
-                <select
-                  id="duration"
-                  className="border p-1 rounded"
-                  onChange={(e) => {
-                    updateSelectedDayDuration(index, parseInt(e.target.value));
-                  }}
-                >
-                  {durations.map((hours) => (
-                    <option
-                      key={hours}
-                      value={hours}
-                      selected={item.duration === hours}
+                {editIndex === index && (
+                  <>
+                    <label htmlFor="duration" className="text-lg">
+                      Duration:
+                    </label>
+                    <select
+                      id="duration"
+                      className="border p-1 rounded"
+                      onChange={(e) => {
+                        updateSelectedDayDuration(
+                          index,
+                          parseInt(e.target.value)
+                        );
+                      }}
                     >
-                      {hours} Hour{hours > 1 ? "s" : ""}
-                    </option>
-                  ))}
-                </select>
+                      {durations.map((hours) => (
+                        <option
+                          key={hours}
+                          value={hours}
+                          selected={item.duration === hours}
+                        >
+                          {hours} Hour{hours > 1 ? "s" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
               </div>
-              <button
-                className="w-full bg-amber-500 hover:bg-amber-700 px-2 py-2 rounded text-white"
-                onClick={() => deleteDayItem(index)}
-              >
-                Delete
-              </button>
+              <div className="flex space-x-5">
+                {editIndex === index ? (
+                  <>
+                    <button
+                      className="w-full bg-amber-500 hover:bg-amber-700 px-2 py-2 rounded text-white"
+                      onClick={() => deleteDayItem(index)}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      className="w-full bg-cyan-500 hover:bg-cyan-700 px-2 py-2 rounded text-white"
+                      onClick={() => {
+                        setEditIndex(-1);
+                      }}
+                    >
+                      Done
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="bg-cyan-500 hover:bg-cyan-700 px-5 py-2 rounded text-white ml-auto"
+                    onClick={() => {
+                      setEditIndex(index);
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
           ))}
       </div>
